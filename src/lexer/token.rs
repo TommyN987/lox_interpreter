@@ -92,7 +92,7 @@ impl TokenType {
             Self::Less => "<".to_string(),
             Self::LessEqual => "<=".to_string(),
             Self::Ident(ident) => ident.to_string(),
-            Self::String(string) => format!("\"{}\"", string.to_string()),
+            Self::String(string) => format!("\"{}\"", string),
             Self::Number { lexeme, literal: _ } => lexeme.to_string(),
             Self::Keyword(keyword) => keyword.to_string(),
             Self::Whitespace | Self::Tab | Self::NewLine | Self::Comment => "".to_string(),
