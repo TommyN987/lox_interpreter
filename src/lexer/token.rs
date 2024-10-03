@@ -55,7 +55,7 @@ pub enum TokenType {
     // Literals
     Ident(String),
     String(String),
-    Number(f64),
+    Number { lexeme: String, literal: f64 },
 
     // Keyword
     Keyword(Keyword),
@@ -92,8 +92,8 @@ impl TokenType {
             Self::Less => "<".to_string(),
             Self::LessEqual => "<=".to_string(),
             Self::Ident(ident) => ident.to_string(),
-            Self::String(string) => string.to_string(),
-            Self::Number(num) => num.to_string(),
+            Self::String(string) => format!("\"{}\"", string.to_string()),
+            Self::Number { lexeme, literal: _ } => lexeme.to_string(),
             Self::Keyword(keyword) => keyword.to_string(),
             Self::Whitespace | Self::Tab | Self::NewLine | Self::Comment => "".to_string(),
             Self::Eof => "".to_string(),
@@ -103,8 +103,8 @@ impl TokenType {
     pub fn literal(&self) -> String {
         match self {
             Self::String(string) => string.to_string(),
-            Self::Number(num) => {
-                let mut stringified = num.to_string();
+            Self::Number { lexeme: _, literal } => {
+                let mut stringified = literal.to_string();
                 if stringified.contains('.') {
                     stringified
                 } else {
@@ -112,7 +112,6 @@ impl TokenType {
                     stringified
                 }
             }
-            Self::Ident(ident) => ident.to_string(),
             _ => "null".to_string(),
         }
     }
@@ -145,7 +144,10 @@ impl Display for TokenType {
                 Self::LessEqual => "LESS_EQUAL",
                 Self::Ident(_) => "IDENTIFIER",
                 Self::String(_) => "STRING",
-                Self::Number(_) => "NUMBER",
+                Self::Number {
+                    lexeme: _,
+                    literal: _,
+                } => "NUMBER",
                 Self::Keyword(keyword) => {
                     let stringified = keyword.to_string().to_uppercase();
                     Box::leak(stringified.into_boxed_str())

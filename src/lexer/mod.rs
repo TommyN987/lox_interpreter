@@ -64,7 +64,10 @@ impl<'a> Lexer<'a> {
         }
 
         Token::new(
-            TokenType::Number(value.parse::<f64>().unwrap()),
+            TokenType::Number {
+                lexeme: value.clone(),
+                literal: value.parse::<f64>().unwrap(),
+            },
             self.line_number,
         )
     }
