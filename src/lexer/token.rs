@@ -57,7 +57,14 @@ pub enum TokenType {
     String(String),
     Number(f64),
 
+    // Keyword
     Keyword(Keyword),
+
+    // Whitespace
+    Whitespace,
+    Tab,
+    NewLine,
+    Comment,
 
     Eof,
 }
@@ -88,6 +95,7 @@ impl TokenType {
             Self::String(string) => string.to_string(),
             Self::Number(num) => num.to_string(),
             Self::Keyword(keyword) => keyword.to_string(),
+            Self::Whitespace | Self::Tab | Self::NewLine | Self::Comment => "".to_string(),
             Self::Eof => "".to_string(),
         }
     }
@@ -142,6 +150,7 @@ impl Display for TokenType {
                     let stringified = keyword.to_string().to_uppercase();
                     Box::leak(stringified.into_boxed_str())
                 }
+                Self::Whitespace | Self::Tab | Self::NewLine | Self::Comment => "",
                 Self::Eof => "EOF",
             }
         )

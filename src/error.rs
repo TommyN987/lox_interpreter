@@ -2,14 +2,15 @@ use std::fmt::Display;
 
 use crate::lexer::LexerError;
 
-pub struct LoxError {
-    line_number: usize,
-    error_type: ErrorType,
+pub enum LoxError {
+    LexerError(LexerError),
+    SyntaxError(String, usize),
 }
 
-enum ErrorType {
-    LexerError(LexerError),
-    SyntaxError(String),
+impl From<LexerError> for LoxError {
+    fn from(value: LexerError) -> Self {
+        Self::LexerError(value)
+    }
 }
 
 impl Display for LoxError {
@@ -17,10 +18,13 @@ impl Display for LoxError {
         writeln!(
             f,
             "[line {}] Error: {}",
-            self.line_number,
-            match &self.error_type {
-                ErrorType::LexerError(err) => err.to_string(),
-                ErrorType::SyntaxError(message) => message.to_string(),
+            match self {
+                Self::LexerError(err) => err.line_number,
+                Self::SyntaxError(_, line_number) => *line_number,
+            },
+            match self {
+                Self::LexerError(err) => err.error_type.to_string(),
+                Self::SyntaxError(message, _) => message.to_string(),
             }
         )
     }
