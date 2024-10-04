@@ -16,7 +16,7 @@ impl Visitor<String> for PrintVisitor {
     }
 
     fn grouping(&mut self, expr: &Grouping) -> String {
-        self.parenthesize("group", &expr.expressions.iter().collect::<Vec<_>>())
+        self.parenthesize("group", &[&*expr.expression])
     }
 }
 

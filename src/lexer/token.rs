@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use super::Keyword;
 
+#[derive(Debug, Clone)]
 pub struct Token {
     pub line_number: usize,
     pub token_type: TokenType,
@@ -28,6 +29,7 @@ impl Display for Token {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens
     LeftParen,

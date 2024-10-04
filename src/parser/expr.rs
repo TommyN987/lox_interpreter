@@ -4,7 +4,7 @@ use crate::define_ast;
 
 define_ast!(Expr,
     Binary(binary) { left: Box<Expr>, operator: BinaryOp, right: Box<Expr> },
-    Grouping(grouping) { expressions: Vec<Expr> },
+    Grouping(grouping) { expression: Box<Expr> },
     Literal(literal) { literal_type: LiteralType },
     Unary(unary) { operator: UnaryOp, right: Box<Expr> },
 );

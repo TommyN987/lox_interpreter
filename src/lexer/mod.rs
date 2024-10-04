@@ -24,6 +24,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    pub fn lex(&mut self) -> Result<Vec<Token>, LexerError> {
+        self.into_iter().collect()
+    }
+
     fn handle_string_literal(&mut self) -> Result<Token, LexerError> {
         let mut content = String::new();
         for c in self.source.by_ref() {
