@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use crate::{lexer::LexerError, parser::ParseError};
 
+#[derive(Debug)]
 pub enum LoxError {
     LexerError(LexerError),
     ParseError(ParseError),

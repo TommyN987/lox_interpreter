@@ -49,7 +49,15 @@ impl Display for LiteralType {
                 Self::Nil => "nil".to_string(),
                 Self::Bool { value } => value.to_string(),
                 Self::String { value } => value.to_string(),
-                Self::Number { value } => value.to_string(),
+                Self::Number { value } => {
+                    let mut stringified = value.to_string();
+                    if stringified.contains('.') {
+                        stringified
+                    } else {
+                        stringified.push_str(".0");
+                        stringified
+                    }
+                }
             }
         )
     }

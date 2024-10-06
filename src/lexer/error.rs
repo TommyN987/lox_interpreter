@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+#[derive(Debug)]
 pub struct LexerError {
     pub line_number: usize,
     pub error_type: LexerErrorType,

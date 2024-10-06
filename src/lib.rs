@@ -1,4 +1,4 @@
-mod error;
-mod lexer;
-mod parser;
-mod visitors;
+pub mod error;
+pub mod lexer;
+pub mod parser;
+pub mod visitors;

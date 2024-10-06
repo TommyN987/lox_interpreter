@@ -24,23 +24,68 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn expression(&mut self) -> ParseResult<Expr> {
+        self.unary()
+    }
+
+    fn unary(&mut self) -> ParseResult<Expr> {
+        if self.matched(&[TokenType::Bang, TokenType::Minus]) {
+            let operator = self.previous();
+            let right = self.unary()?;
+            return match operator.token_type {
+                TokenType::Bang => Ok(Expr::Unary(Unary::new(UnaryOp::Bang, Box::new(right)))),
+                TokenType::Minus => Ok(Expr::Unary(Unary::new(UnaryOp::Minus, Box::new(right)))),
+                _ => Err(ParseError::new(
+                    self.previous().clone(),
+                    "You should not be here",
+                )),
+            };
+        }
+
         self.primary()
     }
 
     fn primary(&mut self) -> ParseResult<Expr> {
-        match &self.peek().token_type {
-            TokenType::Keyword(keyword) => match keyword {
-                Keyword::False => Ok(Expr::Literal(Literal::new(LiteralType::Bool {
-                    value: false,
-                }))),
-                Keyword::True => Ok(Expr::Literal(Literal::new(LiteralType::Bool {
-                    value: true,
-                }))),
-                Keyword::Nil => Ok(Expr::Literal(Literal::new(LiteralType::Nil))),
-                _ => todo!(),
-            },
-            _ => todo!(),
+        let token = self.peek();
+        if self.matched(&[TokenType::Keyword(Keyword::False)]) {
+            return Ok(Expr::Literal(Literal::new(LiteralType::Bool {
+                value: false,
+            })));
         }
+
+        if self.matched(&[TokenType::Keyword(Keyword::True)]) {
+            return Ok(Expr::Literal(Literal::new(LiteralType::Bool {
+                value: true,
+            })));
+        }
+
+        if self.matched(&[TokenType::Keyword(Keyword::Nil)]) {
+            return Ok(Expr::Literal(Literal::new(LiteralType::Nil)));
+        }
+
+        if let TokenType::Number { lexeme: _, literal } = &token.token_type {
+            self.advance();
+            return Ok(Expr::Literal(Literal::new(LiteralType::Number {
+                value: *literal,
+            })));
+        }
+
+        if let TokenType::String(value) = &token.token_type {
+            self.advance();
+            return Ok(Expr::Literal(Literal::new(LiteralType::String {
+                value: value.clone(),
+            })));
+        }
+
+        if self.matched(&[TokenType::LeftParen]) {
+            let expr = self.expression()?;
+            self.consume(&TokenType::RightParen, "Expect ')' after expression.")?; // Match and consume ')'
+            return Ok(Expr::Grouping(Grouping::new(Box::new(expr))));
+        }
+
+        Err(ParseError::new(
+            self.peek().clone(),
+            "You should not be here",
+        ))
     }
 }
 
