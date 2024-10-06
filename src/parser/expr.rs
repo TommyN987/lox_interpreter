@@ -15,6 +15,12 @@ pub enum BinaryOp {
     Minus,
     Mul,
     Div,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+    Equal,
+    NotEqual,
 }
 
 impl Display for BinaryOp {
@@ -23,10 +29,16 @@ impl Display for BinaryOp {
             f,
             "{}",
             match self {
-                Self::Plus => '+',
-                Self::Minus => '-',
-                Self::Mul => '*',
-                Self::Div => '/',
+                Self::Plus => "+",
+                Self::Minus => "-",
+                Self::Mul => "*",
+                Self::Div => "/",
+                Self::Greater => ">",
+                Self::GreaterEqual => ">=",
+                Self::Less => "<",
+                Self::LessEqual => "<=",
+                Self::Equal => "==",
+                Self::NotEqual => "!=",
             }
         )
     }

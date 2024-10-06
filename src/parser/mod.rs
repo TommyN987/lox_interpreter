@@ -24,7 +24,53 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn expression(&mut self) -> ParseResult<Expr> {
-        self.term()
+        self.equality()
+    }
+
+    fn equality(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.comparison()?;
+
+        while self.matched(&[TokenType::EqualEqual, TokenType::BangEqual]) {
+            let operator = match self.previous().token_type {
+                TokenType::EqualEqual => Ok(BinaryOp::Equal),
+                TokenType::BangEqual => Ok(BinaryOp::NotEqual),
+                _ => Err(ParseError::new(
+                    self.previous().clone(),
+                    "You're checking for equality, not whatever this was.",
+                )),
+            };
+            let right = self.comparison()?;
+            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+        }
+
+        Ok(expr)
+    }
+
+    fn comparison(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.term()?;
+
+        while self.matched(&[
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+        ]) {
+            let operator = match self.previous().token_type {
+                TokenType::Greater => Ok(BinaryOp::Greater),
+                TokenType::GreaterEqual => Ok(BinaryOp::GreaterEqual),
+                TokenType::Less => Ok(BinaryOp::Less),
+                TokenType::LessEqual => Ok(BinaryOp::LessEqual),
+                _ => Err(ParseError::new(
+                    self.previous().clone(),
+                    "You're trying to compare, not whatever this is.",
+                )),
+            };
+
+            let right = self.term()?;
+            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+        }
+
+        Ok(expr)
     }
 
     fn term(&mut self) -> ParseResult<Expr> {
