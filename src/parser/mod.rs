@@ -24,7 +24,45 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn expression(&mut self) -> ParseResult<Expr> {
-        self.unary()
+        self.term()
+    }
+
+    fn term(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.factor()?;
+
+        while self.matched(&[TokenType::Minus, TokenType::Plus]) {
+            let operator = match self.previous().token_type {
+                TokenType::Plus => Ok(BinaryOp::Plus),
+                TokenType::Minus => Ok(BinaryOp::Minus),
+                _ => Err(ParseError::new(
+                    self.previous().clone(),
+                    "This really should be plus or minus",
+                )),
+            };
+            let right = self.factor()?;
+            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+        }
+
+        Ok(expr)
+    }
+
+    fn factor(&mut self) -> ParseResult<Expr> {
+        let mut expr = self.unary()?;
+
+        while self.matched(&[TokenType::Slash, TokenType::Star]) {
+            let operator = self.previous();
+            let right = self.unary()?;
+            let operator: Result<BinaryOp, ParseError> = match operator.token_type {
+                TokenType::Slash => Ok(BinaryOp::Div),
+                TokenType::Star => Ok(BinaryOp::Mul),
+                _ => Err(ParseError::new(
+                    self.previous().clone(),
+                    "If you're here, you messed up",
+                )),
+            };
+            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+        }
+        Ok(expr)
     }
 
     fn unary(&mut self) -> ParseResult<Expr> {
@@ -91,6 +129,7 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn advance(&mut self) -> &'a Token {
+        self.skip_whitespace();
         if !self.is_at_end() {
             self.current += 1
         }
@@ -111,6 +150,7 @@ impl<'a> Parser<'a> {
     }
 
     fn matched(&mut self, token_types: &[TokenType]) -> bool {
+        self.skip_whitespace();
         for tt in token_types {
             if self.check(tt) {
                 self.advance();
@@ -120,7 +160,8 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn check(&self, token_type: &TokenType) -> bool {
+    fn check(&mut self, token_type: &TokenType) -> bool {
+        self.skip_whitespace();
         if self.is_at_end() {
             false
         } else {
@@ -130,6 +171,19 @@ impl<'a> Parser<'a> {
 
     fn peek(&self) -> &'a Token {
         &self.tokens[self.current]
+    }
+
+    fn skip_whitespace(&mut self) {
+        while self.matching_whitespace() && !self.is_at_end() {
+            self.current += 1;
+        }
+    }
+
+    fn matching_whitespace(&self) -> bool {
+        matches!(
+            self.peek().token_type,
+            TokenType::Whitespace | TokenType::Tab | TokenType::NewLine | TokenType::Comment
+        )
     }
 
     fn is_at_end(&self) -> bool {

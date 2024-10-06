@@ -29,7 +29,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum TokenType {
     // Single-character tokens
     LeftParen,
@@ -115,6 +115,46 @@ impl TokenType {
                 }
             }
             _ => "null".to_string(),
+        }
+    }
+}
+
+impl PartialEq for TokenType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Compare simple tokens directly
+            (TokenType::LeftParen, TokenType::LeftParen)
+            | (TokenType::RightParen, TokenType::RightParen)
+            | (TokenType::LeftBrace, TokenType::LeftBrace)
+            | (TokenType::RightBrace, TokenType::RightBrace)
+            | (TokenType::Comma, TokenType::Comma)
+            | (TokenType::Dot, TokenType::Dot)
+            | (TokenType::Minus, TokenType::Minus)
+            | (TokenType::Plus, TokenType::Plus)
+            | (TokenType::Semicolon, TokenType::Semicolon)
+            | (TokenType::Slash, TokenType::Slash)
+            | (TokenType::Star, TokenType::Star)
+            | (TokenType::Bang, TokenType::Bang)
+            | (TokenType::BangEqual, TokenType::BangEqual)
+            | (TokenType::Equal, TokenType::Equal)
+            | (TokenType::EqualEqual, TokenType::EqualEqual)
+            | (TokenType::Greater, TokenType::Greater)
+            | (TokenType::GreaterEqual, TokenType::GreaterEqual)
+            | (TokenType::Less, TokenType::Less)
+            | (TokenType::LessEqual, TokenType::LessEqual)
+            | (TokenType::Whitespace, TokenType::Whitespace)
+            | (TokenType::Tab, TokenType::Tab)
+            | (TokenType::NewLine, TokenType::NewLine)
+            | (TokenType::Comment, TokenType::Comment)
+            | (TokenType::Eof, TokenType::Eof) => true,
+
+            (TokenType::Ident(_), TokenType::Ident(_)) => true,
+            (TokenType::String(_), TokenType::String(_)) => true,
+            (TokenType::Number { .. }, TokenType::Number { .. }) => true,
+
+            (TokenType::Keyword(a), TokenType::Keyword(b)) => a == b,
+
+            _ => false,
         }
     }
 }
