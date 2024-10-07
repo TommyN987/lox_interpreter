@@ -2,9 +2,11 @@ pub mod error;
 pub mod value;
 
 pub use error::*;
-use value::Value;
+use value::{NumberPair, StringPair, Value};
 
-use crate::parser::{Binary, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Visitor};
+use crate::parser::{
+    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Visitor,
+};
 
 pub struct Interpreter;
 
@@ -54,6 +56,71 @@ impl Visitor<RuntimeResult<Value>> for Interpreter {
     }
 
     fn binary(&mut self, expr: &Binary) -> RuntimeResult<Value> {
-        todo!()
+        let left = self.evaluate(*expr.left.clone())?;
+        let right = self.evaluate(*expr.right.clone())?;
+
+        match expr.operator {
+            BinaryOp::Mul => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Number(pair.0 * pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::Div => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Number(pair.0 / pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::Minus => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Number(pair.0 - pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::Plus => {
+                if let Ok(pair) = NumberPair::try_from((&left, &right)) {
+                    return Ok(Value::Number(pair.0 + pair.1));
+                }
+                if let Ok(pair) = StringPair::try_from((&left, &right)) {
+                    let concatenated = String::from_iter([pair.0, pair.1]);
+                    return Ok(Value::String(concatenated));
+                }
+                Err(RuntimeError::new(expr.line_number, "blabla"))
+            }
+            BinaryOp::Greater => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Boolean(pair.0 > pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::Less => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Boolean(pair.0 < pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::GreaterEqual => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Boolean(pair.0 >= pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::LessEqual => match NumberPair::try_from((&left, &right)) {
+                Ok(pair) => Ok(Value::Boolean(pair.0 <= pair.1)),
+                Err(_) => Err(RuntimeError::new(
+                    expr.line_number,
+                    "Operands must be numbers.",
+                )),
+            },
+            BinaryOp::Equal => Ok(Value::Boolean(left == right)),
+            BinaryOp::NotEqual => Ok(Value::Boolean(left != right)),
+        }
     }
 }
