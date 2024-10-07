@@ -3,10 +3,10 @@ use std::fmt::Display;
 use crate::define_ast;
 
 define_ast!(Expr,
-    Binary(binary) { left: Box<Expr>, operator: BinaryOp, right: Box<Expr> },
-    Grouping(grouping) { expression: Box<Expr> },
-    Literal(literal) { literal_type: LiteralType },
-    Unary(unary) { operator: UnaryOp, right: Box<Expr> },
+    Binary(binary) { left: Box<Expr>, operator: BinaryOp, right: Box<Expr>, line_number: usize },
+    Grouping(grouping) { expression: Box<Expr>, line_number: usize  },
+    Literal(literal) { literal_type: LiteralType, line_number: usize  },
+    Unary(unary) { operator: UnaryOp, right: Box<Expr>, line_number: usize  },
 );
 
 #[derive(Debug, Clone)]

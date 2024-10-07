@@ -31,16 +31,22 @@ impl<'a> Parser<'a> {
         let mut expr = self.comparison()?;
 
         while self.matched(&[TokenType::EqualEqual, TokenType::BangEqual]) {
-            let operator = match self.previous().token_type {
+            let token = self.previous();
+            let operator = match token.token_type {
                 TokenType::EqualEqual => Ok(BinaryOp::Equal),
                 TokenType::BangEqual => Ok(BinaryOp::NotEqual),
                 _ => Err(ParseError::new(
-                    self.previous().clone(),
+                    token.clone(),
                     "You're checking for equality, not whatever this was.",
                 )),
             };
             let right = self.comparison()?;
-            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+            expr = Expr::Binary(Binary::new(
+                Box::new(expr),
+                operator?,
+                Box::new(right),
+                token.line_number,
+            ))
         }
 
         Ok(expr)
@@ -55,19 +61,25 @@ impl<'a> Parser<'a> {
             TokenType::Less,
             TokenType::LessEqual,
         ]) {
-            let operator = match self.previous().token_type {
+            let token = self.previous();
+            let operator = match token.token_type {
                 TokenType::Greater => Ok(BinaryOp::Greater),
                 TokenType::GreaterEqual => Ok(BinaryOp::GreaterEqual),
                 TokenType::Less => Ok(BinaryOp::Less),
                 TokenType::LessEqual => Ok(BinaryOp::LessEqual),
                 _ => Err(ParseError::new(
-                    self.previous().clone(),
+                    token.clone(),
                     "You're trying to compare, not whatever this is.",
                 )),
             };
 
             let right = self.term()?;
-            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+            expr = Expr::Binary(Binary::new(
+                Box::new(expr),
+                operator?,
+                Box::new(right),
+                token.line_number,
+            ))
         }
 
         Ok(expr)
@@ -77,16 +89,22 @@ impl<'a> Parser<'a> {
         let mut expr = self.factor()?;
 
         while self.matched(&[TokenType::Minus, TokenType::Plus]) {
-            let operator = match self.previous().token_type {
+            let token = self.previous();
+            let operator = match token.token_type {
                 TokenType::Plus => Ok(BinaryOp::Plus),
                 TokenType::Minus => Ok(BinaryOp::Minus),
                 _ => Err(ParseError::new(
-                    self.previous().clone(),
+                    token.clone(),
                     "This really should be plus or minus",
                 )),
             };
             let right = self.factor()?;
-            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+            expr = Expr::Binary(Binary::new(
+                Box::new(expr),
+                operator?,
+                Box::new(right),
+                token.line_number,
+            ))
         }
 
         Ok(expr)
@@ -96,17 +114,22 @@ impl<'a> Parser<'a> {
         let mut expr = self.unary()?;
 
         while self.matched(&[TokenType::Slash, TokenType::Star]) {
-            let operator = self.previous();
+            let token = self.previous();
             let right = self.unary()?;
-            let operator: Result<BinaryOp, ParseError> = match operator.token_type {
+            let operator: Result<BinaryOp, ParseError> = match token.token_type {
                 TokenType::Slash => Ok(BinaryOp::Div),
                 TokenType::Star => Ok(BinaryOp::Mul),
                 _ => Err(ParseError::new(
-                    self.previous().clone(),
+                    token.clone(),
                     "If you're here, you messed up",
                 )),
             };
-            expr = Expr::Binary(Binary::new(Box::new(expr), operator?, Box::new(right)))
+            expr = Expr::Binary(Binary::new(
+                Box::new(expr),
+                operator?,
+                Box::new(right),
+                token.line_number,
+            ))
         }
         Ok(expr)
     }
@@ -116,8 +139,16 @@ impl<'a> Parser<'a> {
             let operator = self.previous();
             let right = self.unary()?;
             return match operator.token_type {
-                TokenType::Bang => Ok(Expr::Unary(Unary::new(UnaryOp::Bang, Box::new(right)))),
-                TokenType::Minus => Ok(Expr::Unary(Unary::new(UnaryOp::Minus, Box::new(right)))),
+                TokenType::Bang => Ok(Expr::Unary(Unary::new(
+                    UnaryOp::Bang,
+                    Box::new(right),
+                    operator.line_number,
+                ))),
+                TokenType::Minus => Ok(Expr::Unary(Unary::new(
+                    UnaryOp::Minus,
+                    Box::new(right),
+                    operator.line_number,
+                ))),
                 _ => Err(ParseError::new(
                     self.previous().clone(),
                     "You should not be here",
@@ -131,39 +162,51 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> ParseResult<Expr> {
         let token = self.peek();
         if self.matched(&[TokenType::Keyword(Keyword::False)]) {
-            return Ok(Expr::Literal(Literal::new(LiteralType::Bool {
-                value: false,
-            })));
+            return Ok(Expr::Literal(Literal::new(
+                LiteralType::Bool { value: false },
+                token.line_number,
+            )));
         }
 
         if self.matched(&[TokenType::Keyword(Keyword::True)]) {
-            return Ok(Expr::Literal(Literal::new(LiteralType::Bool {
-                value: true,
-            })));
+            return Ok(Expr::Literal(Literal::new(
+                LiteralType::Bool { value: true },
+                token.line_number,
+            )));
         }
 
         if self.matched(&[TokenType::Keyword(Keyword::Nil)]) {
-            return Ok(Expr::Literal(Literal::new(LiteralType::Nil)));
+            return Ok(Expr::Literal(Literal::new(
+                LiteralType::Nil,
+                token.line_number,
+            )));
         }
 
         if let TokenType::Number { lexeme: _, literal } = &token.token_type {
             self.advance();
-            return Ok(Expr::Literal(Literal::new(LiteralType::Number {
-                value: *literal,
-            })));
+            return Ok(Expr::Literal(Literal::new(
+                LiteralType::Number { value: *literal },
+                token.line_number,
+            )));
         }
 
         if let TokenType::String(value) = &token.token_type {
             self.advance();
-            return Ok(Expr::Literal(Literal::new(LiteralType::String {
-                value: value.clone(),
-            })));
+            return Ok(Expr::Literal(Literal::new(
+                LiteralType::String {
+                    value: value.clone(),
+                },
+                token.line_number,
+            )));
         }
 
         if self.matched(&[TokenType::LeftParen]) {
             let expr = self.expression()?;
             self.consume(&TokenType::RightParen, "Expect ')' after expression.")?; // Match and consume ')'
-            return Ok(Expr::Grouping(Grouping::new(Box::new(expr))));
+            return Ok(Expr::Grouping(Grouping::new(
+                Box::new(expr),
+                token.line_number,
+            )));
         }
 
         Err(ParseError::new(
