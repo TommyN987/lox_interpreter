@@ -1,9 +1,11 @@
 pub mod error;
 pub mod expr;
 pub(super) mod macros;
+pub mod stmt;
 
 pub use error::*;
 pub use expr::*;
+use stmt::{Expression, Print, Stmt};
 
 use crate::lexer::{Keyword, Token, TokenType};
 
@@ -17,12 +19,52 @@ impl<'a> Parser<'a> {
         Self { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> ParseResult<Expr> {
+    pub fn parse(&mut self) -> ParseResult<Vec<Stmt>> {
+        let mut stmts = vec![];
+        let mut had_error = None; // Track whether we encountered any errors
+
+        while !self.is_at_end() {
+            match self.statement() {
+                Ok(stmt) => stmts.push(stmt),
+                Err(err) => {
+                    had_error = Some(err); // Set flag to indicate an error occurred
+                    self.synchronize(); // Recover after a parse error
+                }
+            }
+        }
+
+        match had_error {
+            Some(err) => Err(err),
+            None => Ok(stmts),
+        }
+    }
+
+    pub fn parse_expr(&mut self) -> ParseResult<Expr> {
         self.expression()
     }
 }
 
 impl<'a> Parser<'a> {
+    fn statement(&mut self) -> ParseResult<Stmt> {
+        self.skip_whitespace();
+        if self.matched(&[TokenType::Keyword(Keyword::Print)]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn expression_statement(&mut self) -> ParseResult<Stmt> {
+        let expr = self.expression()?;
+        self.consume(&TokenType::Semicolon, "Expect ';' afrer expression.")?;
+        Ok(Stmt::Expression(Expression::new(expr)))
+    }
+
+    fn print_statement(&mut self) -> ParseResult<Stmt> {
+        let value = self.expression()?;
+        self.consume(&TokenType::Semicolon, "Expect ';' after value.")?;
+        Ok(Stmt::Print(Print::new(value)))
+    }
+
     fn expression(&mut self) -> ParseResult<Expr> {
         self.equality()
     }
@@ -162,6 +204,7 @@ impl<'a> Parser<'a> {
     fn primary(&mut self) -> ParseResult<Expr> {
         let token = self.peek();
         if self.matched(&[TokenType::Keyword(Keyword::False)]) {
+            let token = self.previous();
             return Ok(Expr::Literal(Literal::new(
                 LiteralType::Bool { value: false },
                 token.line_number,
@@ -209,6 +252,13 @@ impl<'a> Parser<'a> {
             )));
         }
 
+        if self.is_at_end() {
+            return Err(ParseError::new(
+                self.previous().clone(),
+                "Unexpected end of input",
+            ));
+        }
+
         Err(ParseError::new(
             self.peek().clone(),
             "You should not be here",
@@ -217,6 +267,33 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    fn synchronize(&mut self) {
+        self.advance(); // Move past the error token
+
+        while !self.is_at_end() {
+            // If we find a semicolon, assume we've reached the end of a statement
+            if self.previous().token_type == TokenType::Semicolon {
+                return;
+            }
+
+            // If we find a new "statement starter" keyword, assume we've reached a safe point
+            match self.peek().token_type {
+                TokenType::Keyword(Keyword::Class)
+                | TokenType::Keyword(Keyword::Fun)
+                | TokenType::Keyword(Keyword::Var)
+                | TokenType::Keyword(Keyword::For)
+                | TokenType::Keyword(Keyword::If)
+                | TokenType::Keyword(Keyword::While)
+                | TokenType::Keyword(Keyword::Print)
+                | TokenType::Keyword(Keyword::Return) => return,
+                _ => {}
+            }
+
+            // Keep advancing to find a safe point
+            self.advance();
+        }
+    }
+
     fn advance(&mut self) -> &'a Token {
         self.skip_whitespace();
         if !self.is_at_end() {
@@ -230,6 +307,7 @@ impl<'a> Parser<'a> {
     }
 
     fn consume(&mut self, token_type: &'a TokenType, message: &str) -> ParseResult<()> {
+        self.skip_whitespace();
         if self.check(token_type) {
             self.advance();
             Ok(())

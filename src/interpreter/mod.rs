@@ -5,14 +5,26 @@ pub use error::*;
 use value::{NumberPair, StringPair, Value};
 
 use crate::parser::{
-    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Visitor,
+    stmt::{Expression, Print, Stmt, Visitor as StmtVisitor},
+    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Visitor as ExprVisitor,
 };
 
 pub struct Interpreter;
 
 impl Interpreter {
-    pub fn evaluate(&mut self, expr: Expr) -> RuntimeResult<Value> {
-        Ok(expr.accept(self)?)
+    pub fn interpret(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
+        for stmt in stmts {
+            self.execute(stmt)?;
+        }
+        Ok(())
+    }
+
+    pub fn evaluate(&mut self, expr: &Expr) -> RuntimeResult<Value> {
+        expr.accept(self)
+    }
+
+    fn execute(&mut self, stmt: &Stmt) -> RuntimeResult<()> {
+        stmt.accept(self)
     }
 
     fn is_truthy(value: &Value) -> bool {
@@ -25,7 +37,20 @@ impl Interpreter {
     }
 }
 
-impl Visitor<RuntimeResult<Value>> for Interpreter {
+impl StmtVisitor<RuntimeResult<()>> for Interpreter {
+    fn expression(&mut self, stmt: &Expression) -> RuntimeResult<()> {
+        self.evaluate(&stmt.expression)?;
+        Ok(())
+    }
+
+    fn print(&mut self, stmt: &Print) -> RuntimeResult<()> {
+        let value = self.evaluate(&stmt.expression)?;
+        println!("{}", value);
+        Ok(())
+    }
+}
+
+impl ExprVisitor<RuntimeResult<Value>> for Interpreter {
     fn literal(&mut self, expr: &Literal) -> RuntimeResult<Value> {
         match &expr.literal_type {
             LiteralType::Nil => Ok(Value::Nil),
@@ -36,12 +61,11 @@ impl Visitor<RuntimeResult<Value>> for Interpreter {
     }
 
     fn grouping(&mut self, expr: &Grouping) -> RuntimeResult<Value> {
-        let expr = *expr.expression.clone();
-        Ok(self.evaluate(expr)?)
+        self.evaluate(&expr.expression)
     }
 
     fn unary(&mut self, expr: &Unary) -> RuntimeResult<Value> {
-        let right = self.evaluate(*expr.right.clone())?;
+        let right = self.evaluate(&expr.right)?;
 
         match expr.operator {
             UnaryOp::Minus => match right {
@@ -56,8 +80,8 @@ impl Visitor<RuntimeResult<Value>> for Interpreter {
     }
 
     fn binary(&mut self, expr: &Binary) -> RuntimeResult<Value> {
-        let left = self.evaluate(*expr.left.clone())?;
-        let right = self.evaluate(*expr.right.clone())?;
+        let left = self.evaluate(&expr.left)?;
+        let right = self.evaluate(&expr.right)?;
 
         match expr.operator {
             BinaryOp::Mul => match NumberPair::try_from((&left, &right)) {

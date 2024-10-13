@@ -1,8 +1,21 @@
-use crate::parser::{Binary, Expr, Grouping, Literal, Unary, Visitor};
+use crate::parser::{
+    stmt::{Expression, Print, Visitor as StmtVisitor},
+    Binary, Expr, Grouping, Literal, Unary, Visitor as ExprVisitor,
+};
 
 pub struct PrintVisitor;
 
-impl Visitor<String> for PrintVisitor {
+impl StmtVisitor<String> for PrintVisitor {
+    fn print(&mut self, expr: &Print) -> String {
+        expr.expression.accept(self)
+    }
+
+    fn expression(&mut self, expr: &Expression) -> String {
+        expr.accept(self)
+    }
+}
+
+impl ExprVisitor<String> for PrintVisitor {
     fn unary(&mut self, expr: &Unary) -> String {
         self.parenthesize(&expr.operator.to_string(), &[&expr.right])
     }
