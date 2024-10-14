@@ -30,18 +30,17 @@ impl<'a> Lexer<'a> {
 
     fn handle_string_literal(&mut self) -> Result<Token, LexerError> {
         let mut content = String::new();
-        for c in self.source.by_ref() {
+        while let Some(c) = self.source.next() {
             if c == '"' {
                 return Ok(Token::new(TokenType::String(content), self.line_number));
             } else if c == '\n' {
-                return Err(LexerError::new(
-                    LexerErrorType::UnterminatedString,
-                    self.line_number,
-                ));
+                self.line_number += 1;
+                content.push(c);
             } else {
                 content.push(c);
             }
         }
+
         Err(LexerError::new(
             LexerErrorType::UnterminatedString,
             self.line_number,

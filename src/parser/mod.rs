@@ -21,14 +21,18 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self) -> ParseResult<Vec<Stmt>> {
         let mut stmts = vec![];
-        let mut had_error = None; // Track whether we encountered any errors
+        let mut had_error = None;
 
-        while !self.is_at_end() {
+        loop {
+            self.skip_whitespace();
+            if self.is_at_end() {
+                break;
+            }
             match self.statement() {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
-                    had_error = Some(err); // Set flag to indicate an error occurred
-                    self.synchronize(); // Recover after a parse error
+                    had_error = Some(err);
+                    self.synchronize();
                 }
             }
         }
@@ -61,6 +65,12 @@ impl<'a> Parser<'a> {
 
     fn print_statement(&mut self) -> ParseResult<Stmt> {
         let value = self.expression()?;
+        if self.is_at_end() {
+            return Err(ParseError::new(
+                self.peek().clone(),
+                "Unexpected end of input after print statement.",
+            ));
+        }
         self.consume(&TokenType::Semicolon, "Expect ';' after value.")?;
         Ok(Stmt::Print(Print::new(value)))
     }
@@ -203,6 +213,7 @@ impl<'a> Parser<'a> {
 
     fn primary(&mut self) -> ParseResult<Expr> {
         let token = self.peek();
+
         if self.matched(&[TokenType::Keyword(Keyword::False)]) {
             let token = self.previous();
             return Ok(Expr::Literal(Literal::new(
@@ -252,13 +263,6 @@ impl<'a> Parser<'a> {
             )));
         }
 
-        if self.is_at_end() {
-            return Err(ParseError::new(
-                self.previous().clone(),
-                "Unexpected end of input",
-            ));
-        }
-
         Err(ParseError::new(
             self.peek().clone(),
             "You should not be here",
@@ -268,15 +272,17 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn synchronize(&mut self) {
-        self.advance(); // Move past the error token
+        if self.is_at_end() {
+            return;
+        }
+
+        self.advance();
 
         while !self.is_at_end() {
-            // If we find a semicolon, assume we've reached the end of a statement
             if self.previous().token_type == TokenType::Semicolon {
                 return;
             }
 
-            // If we find a new "statement starter" keyword, assume we've reached a safe point
             match self.peek().token_type {
                 TokenType::Keyword(Keyword::Class)
                 | TokenType::Keyword(Keyword::Fun)
@@ -289,7 +295,6 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
 
-            // Keep advancing to find a safe point
             self.advance();
         }
     }
@@ -308,6 +313,12 @@ impl<'a> Parser<'a> {
 
     fn consume(&mut self, token_type: &'a TokenType, message: &str) -> ParseResult<()> {
         self.skip_whitespace();
+        if self.is_at_end() {
+            return Err(ParseError::new(
+                self.peek().clone(),
+                "Unexpected end of input.",
+            ));
+        }
         if self.check(token_type) {
             self.advance();
             Ok(())
@@ -337,6 +348,9 @@ impl<'a> Parser<'a> {
     }
 
     fn peek(&self) -> &'a Token {
+        if self.current >= self.tokens.len() {
+            return &self.tokens[self.tokens.len() - 1];
+        }
         &self.tokens[self.current]
     }
 
