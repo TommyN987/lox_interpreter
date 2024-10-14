@@ -1,6 +1,6 @@
 use crate::parser::{
-    stmt::{Expression, Print, Visitor as StmtVisitor},
-    Binary, Expr, Grouping, Literal, Unary, Visitor as ExprVisitor,
+    stmt::{Expression, Print, Var, Visitor as StmtVisitor},
+    Binary, Expr, Grouping, Literal, Unary, Variable, Visitor as ExprVisitor,
 };
 
 pub struct PrintVisitor;
@@ -11,6 +11,10 @@ impl StmtVisitor<String> for PrintVisitor {
     }
 
     fn expression(&mut self, expr: &Expression) -> String {
+        expr.accept(self)
+    }
+
+    fn var(&mut self, expr: &Var) -> String {
         expr.accept(self)
     }
 }
@@ -30,6 +34,10 @@ impl ExprVisitor<String> for PrintVisitor {
 
     fn grouping(&mut self, expr: &Grouping) -> String {
         self.parenthesize("group", &[&*expr.expression])
+    }
+
+    fn variable(&mut self, expr: &Variable) -> String {
+        expr.name.token_type.lexeme()
     }
 }
 

@@ -5,7 +5,7 @@ pub mod stmt;
 
 pub use error::*;
 pub use expr::*;
-use stmt::{Expression, Print, Stmt};
+use stmt::{Expression, Print, Stmt, Var};
 
 use crate::lexer::{Keyword, Token, TokenType};
 
@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
             if self.is_at_end() {
                 break;
             }
-            match self.statement() {
+            match self.declaration() {
                 Ok(stmt) => stmts.push(stmt),
                 Err(err) => {
                     had_error = Some(err);
@@ -49,6 +49,38 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    fn declaration(&mut self) -> ParseResult<Stmt> {
+        if self.matched(&[TokenType::Keyword(Keyword::Var)]) {
+            let next = self.advance();
+            return self.var_declaration(next);
+        }
+        self.statement()
+    }
+
+    fn var_declaration(&mut self, name_token: &Token) -> ParseResult<Stmt> {
+        let name = if let TokenType::Ident(ref name_str) = name_token.token_type {
+            name_str.clone()
+        } else {
+            return Err(ParseError::new(
+                name_token.clone(),
+                "Expected an identifier.",
+            ));
+        };
+
+        let mut initializer = None;
+
+        if self.matched(&[TokenType::Equal]) {
+            initializer = Some(self.expression()?);
+        }
+
+        self.consume(
+            &TokenType::Semicolon,
+            "Expect ';' after variable declaration.",
+        )?;
+
+        Ok(Stmt::Var(Var::new(name, initializer)))
+    }
+
     fn statement(&mut self) -> ParseResult<Stmt> {
         self.skip_whitespace();
         if self.matched(&[TokenType::Keyword(Keyword::Print)]) {
@@ -261,6 +293,11 @@ impl<'a> Parser<'a> {
                 Box::new(expr),
                 token.line_number,
             )));
+        }
+
+        if let TokenType::Ident(_) = &token.token_type {
+            self.advance();
+            return Ok(Expr::Variable(Variable::new(token.clone())));
         }
 
         Err(ParseError::new(

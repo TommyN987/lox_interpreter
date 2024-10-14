@@ -30,7 +30,7 @@ impl<'a> Lexer<'a> {
 
     fn handle_string_literal(&mut self) -> Result<Token, LexerError> {
         let mut content = String::new();
-        while let Some(c) = self.source.next() {
+        for c in self.source.by_ref() {
             if c == '"' {
                 return Ok(Token::new(TokenType::String(content), self.line_number));
             } else if c == '\n' {

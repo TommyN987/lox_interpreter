@@ -1,15 +1,21 @@
+pub mod environment;
 pub mod error;
 pub mod value;
 
+use environment::Environment;
 pub use error::*;
 use value::{NumberPair, StringPair, Value};
 
 use crate::parser::{
-    stmt::{Expression, Print, Stmt, Visitor as StmtVisitor},
-    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Visitor as ExprVisitor,
+    stmt::{Expression, Print, Stmt, Var, Visitor as StmtVisitor},
+    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Variable,
+    Visitor as ExprVisitor,
 };
 
-pub struct Interpreter;
+#[derive(Default)]
+pub struct Interpreter {
+    environment: Environment,
+}
 
 impl Interpreter {
     pub fn interpret(&mut self, stmts: &[Stmt]) -> RuntimeResult<()> {
@@ -47,6 +53,17 @@ impl StmtVisitor<RuntimeResult<()>> for Interpreter {
         let value = self.evaluate(&stmt.expression)?;
         println!("{}", value);
         Ok(())
+    }
+
+    fn var(&mut self, stmt: &Var) -> RuntimeResult<()> {
+        if let Some(init) = &stmt.initializer {
+            let value = self.evaluate(init)?;
+            self.environment.define(&stmt.name, value);
+            Ok(())
+        } else {
+            self.environment.define(&stmt.name, Value::Nil);
+            Ok(())
+        }
     }
 }
 
@@ -146,5 +163,10 @@ impl ExprVisitor<RuntimeResult<Value>> for Interpreter {
             BinaryOp::Equal => Ok(Value::Boolean(left == right)),
             BinaryOp::NotEqual => Ok(Value::Boolean(left != right)),
         }
+    }
+
+    fn variable(&mut self, expr: &Variable) -> RuntimeResult<Value> {
+        let result = self.environment.get(&expr.name)?;
+        Ok(result.clone())
     }
 }

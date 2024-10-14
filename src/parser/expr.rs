@@ -1,12 +1,13 @@
 use std::fmt::Display;
 
-use crate::define_ast;
+use crate::{define_ast, lexer::Token};
 
 define_ast!(Expr,
     Binary(binary) { left: Box<Expr>, operator: BinaryOp, right: Box<Expr>, line_number: usize },
     Grouping(grouping) { expression: Box<Expr>, line_number: usize  },
     Literal(literal) { literal_type: LiteralType, line_number: usize  },
     Unary(unary) { operator: UnaryOp, right: Box<Expr>, line_number: usize  },
+    Variable(variable) { name: Token },
 );
 
 #[derive(Debug, Clone)]
@@ -77,7 +78,7 @@ impl Display for LiteralType {
 
 impl Display for Literal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.literal_type.to_string())
+        write!(f, "{}", self.literal_type)
     }
 }
 
