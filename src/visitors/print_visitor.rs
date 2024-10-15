@@ -1,6 +1,6 @@
 use crate::parser::{
-    stmt::{Expression, Print, Var, Visitor as StmtVisitor},
-    Binary, Expr, Grouping, Literal, Unary, Variable, Visitor as ExprVisitor,
+    stmt::{Block, Expression, Print, Var, Visitor as StmtVisitor},
+    Assign, Binary, Expr, Grouping, Literal, Unary, Variable, Visitor as ExprVisitor,
 };
 
 pub struct PrintVisitor;
@@ -15,6 +15,10 @@ impl StmtVisitor<String> for PrintVisitor {
     }
 
     fn var(&mut self, expr: &Var) -> String {
+        expr.accept(self)
+    }
+
+    fn block(&mut self, expr: &Block) -> String {
         expr.accept(self)
     }
 }
@@ -39,11 +43,20 @@ impl ExprVisitor<String> for PrintVisitor {
     fn variable(&mut self, expr: &Variable) -> String {
         expr.name.token_type.lexeme()
     }
+
+    fn assign(&mut self, _expr: &Assign) -> String {
+        String::new()
+    }
 }
 
 impl PrintVisitor {
-    pub fn print(&mut self, expr: &Expr) -> String {
-        expr.accept(self)
+    pub fn print(&mut self, expr: &Expr) -> Option<String> {
+        let to_print = expr.accept(self);
+        if to_print.is_empty() {
+            None
+        } else {
+            Some(to_print)
+        }
     }
 
     fn parenthesize(&mut self, name: &str, exprs: &[&Expr]) -> String {

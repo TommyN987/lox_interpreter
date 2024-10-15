@@ -2,19 +2,21 @@ pub mod environment;
 pub mod error;
 pub mod value;
 
+use std::{cell::RefCell, rc::Rc};
+
 use environment::Environment;
 pub use error::*;
 use value::{NumberPair, StringPair, Value};
 
 use crate::parser::{
-    stmt::{Expression, Print, Stmt, Var, Visitor as StmtVisitor},
-    Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Variable,
+    stmt::{Block, Expression, Print, Stmt, Var, Visitor as StmtVisitor},
+    Assign, Binary, BinaryOp, Expr, Grouping, Literal, LiteralType, Unary, UnaryOp, Variable,
     Visitor as ExprVisitor,
 };
 
 #[derive(Default)]
 pub struct Interpreter {
-    environment: Environment,
+    environment: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
@@ -31,6 +33,23 @@ impl Interpreter {
 
     fn execute(&mut self, stmt: &Stmt) -> RuntimeResult<()> {
         stmt.accept(self)
+    }
+
+    fn execute_block(
+        &mut self,
+        statements: &[Stmt],
+        new_environment: Rc<RefCell<Environment>>,
+    ) -> RuntimeResult<()> {
+        let previous_environment = self.environment.clone();
+        self.environment = new_environment;
+
+        for statement in statements {
+            self.execute(statement)?;
+        }
+
+        self.environment = previous_environment;
+
+        Ok(())
     }
 
     fn is_truthy(value: &Value) -> bool {
@@ -56,14 +75,22 @@ impl StmtVisitor<RuntimeResult<()>> for Interpreter {
     }
 
     fn var(&mut self, stmt: &Var) -> RuntimeResult<()> {
-        if let Some(init) = &stmt.initializer {
-            let value = self.evaluate(init)?;
-            self.environment.define(&stmt.name, value);
-            Ok(())
+        let value = if let Some(init) = &stmt.initializer {
+            self.evaluate(init)?
         } else {
-            self.environment.define(&stmt.name, Value::Nil);
-            Ok(())
-        }
+            Value::Nil
+        };
+
+        let mut env = self.environment.borrow_mut();
+        env.define(&stmt.name, value);
+
+        Ok(())
+    }
+
+    fn block(&mut self, stmt: &Block) -> RuntimeResult<()> {
+        let new_environment = Environment::new(Some(self.environment.clone())); // New block environment
+        self.execute_block(&stmt.statements, new_environment)?;
+        Ok(())
     }
 }
 
@@ -166,7 +193,17 @@ impl ExprVisitor<RuntimeResult<Value>> for Interpreter {
     }
 
     fn variable(&mut self, expr: &Variable) -> RuntimeResult<Value> {
-        let result = self.environment.get(&expr.name)?;
+        let env = self.environment.borrow();
+        let result = env.get(&expr.name)?;
         Ok(result.clone())
+    }
+
+    fn assign(&mut self, expr: &Assign) -> RuntimeResult<Value> {
+        let value = self.evaluate(&expr.value)?;
+
+        let mut env = self.environment.borrow_mut();
+        env.assign(&expr.name, value.clone())?;
+
+        Ok(value)
     }
 }

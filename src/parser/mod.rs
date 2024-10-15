@@ -5,7 +5,7 @@ pub mod stmt;
 
 pub use error::*;
 pub use expr::*;
-use stmt::{Expression, Print, Stmt, Var};
+use stmt::{Block, Expression, Print, Stmt, Var};
 
 use crate::lexer::{Keyword, Token, TokenType};
 
@@ -83,10 +83,27 @@ impl<'a> Parser<'a> {
 
     fn statement(&mut self) -> ParseResult<Stmt> {
         self.skip_whitespace();
+
         if self.matched(&[TokenType::Keyword(Keyword::Print)]) {
             return self.print_statement();
         }
+
+        if self.matched(&[TokenType::LeftBrace]) {
+            return Ok(Stmt::Block(Block::new(self.block()?)));
+        }
+
         self.expression_statement()
+    }
+
+    fn block(&mut self) -> ParseResult<Vec<Stmt>> {
+        let mut statements = vec![];
+
+        while !self.check(&TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.declaration()?);
+        }
+
+        self.consume(&TokenType::RightBrace, "Expect '}' after block.")?;
+        Ok(statements)
     }
 
     fn expression_statement(&mut self) -> ParseResult<Stmt> {
@@ -108,7 +125,29 @@ impl<'a> Parser<'a> {
     }
 
     fn expression(&mut self) -> ParseResult<Expr> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> ParseResult<Expr> {
+        let expr = self.equality()?;
+
+        if self.matched(&[TokenType::Equal]) {
+            let equals = self.previous();
+            let value = self.assignment()?;
+
+            match expr {
+                Expr::Variable(var) => {
+                    let name = var.name;
+                    Ok(Expr::Assign(Assign::new(name, Box::new(value))))
+                }
+                _ => Err(ParseError::new(
+                    equals.clone(),
+                    "Invalid assignment target.",
+                )),
+            }
+        } else {
+            Ok(expr)
+        }
     }
 
     fn equality(&mut self) -> ParseResult<Expr> {

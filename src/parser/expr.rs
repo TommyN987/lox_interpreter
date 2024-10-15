@@ -3,6 +3,7 @@ use std::fmt::Display;
 use crate::{define_ast, lexer::Token};
 
 define_ast!(Expr,
+    Assign(assign) { name: Token, value: Box<Expr> },
     Binary(binary) { left: Box<Expr>, operator: BinaryOp, right: Box<Expr>, line_number: usize },
     Grouping(grouping) { expression: Box<Expr>, line_number: usize  },
     Literal(literal) { literal_type: LiteralType, line_number: usize  },
